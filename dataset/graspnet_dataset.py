@@ -37,7 +37,7 @@ class GraspNetDataset(Dataset):
         elif split == 'test':
             self.sceneIds = list(range(100, 190))
         elif split == 'test_seen':
-            self.sceneIds = list(range(100, 130))
+            self.sceneIds = list(range(101, 130))
         elif split == 'test_similar':
             self.sceneIds = list(range(130, 160))
         elif split == 'test_novel':

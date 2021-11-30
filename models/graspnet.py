@@ -17,13 +17,14 @@ from models.backbone_resunet14 import MinkUNet14
 from models.modules import ApproachNet, GraspableNet, CloudCrop, SWADNet
 from loss_utils import GRASP_MAX_WIDTH, NUM_VIEW, NUM_ANGLE, NUM_DEPTH, GRASPNESS_THRESHOLD, M_POINT
 from label_generation import process_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
+from pointnet2.pointnet2_utils import furthest_point_sample, gather_operation
 
 
 class GraspNet(nn.Module):
-    def __init__(self, cylinder_radius=0.05, seed_feat_dim=512, is_training=True, log_string=None):
+    def __init__(self, cylinder_radius=0.05, seed_feat_dim=512, is_training=True):
         super().__init__()
         self.is_training = is_training
-        self.log_string = log_string
+        # self.log_string = log_string
         self.seed_feature_dim = seed_feat_dim
         self.num_depth = NUM_DEPTH
         self.num_angle = NUM_ANGLE
@@ -34,10 +35,10 @@ class GraspNet(nn.Module):
         self.graspable = GraspableNet(seed_feature_dim=self.seed_feature_dim)
         self.rotation = ApproachNet(self.num_view, seed_feature_dim=self.seed_feature_dim, is_training=self.is_training)
         self.crop = CloudCrop(nsample=16, cylinder_radius=cylinder_radius, seed_feature_dim=self.seed_feature_dim)
-        self.swd = SWADNet(num_angle=self.num_angle, num_depth=self.num_depth)
+        self.swad = SWADNet(num_angle=self.num_angle, num_depth=self.num_depth)
 
     def forward(self, end_points):
-        seed_xyz = end_points['point_clouds']  # use all sampled point cloud
+        seed_xyz = end_points['point_clouds']  # use all sampled point cloud, B*Ns*3
         B, point_num, _ = seed_xyz.shape  # batch _size
         # point-wise features
         coordinates_batch = end_points['coors']
@@ -47,7 +48,7 @@ class GraspNet(nn.Module):
         seed_features = seed_features[end_points['quantize2original']].view(B, point_num, -1).transpose(1, 2)
 
         end_points = self.graspable(seed_features, end_points)
-        seed_features_flipped = seed_features.transpose(1, 2)
+        seed_features_flipped = seed_features.transpose(1, 2)  # B*Ns*feat_dim
         objectness_score = end_points['objectness_score']
         graspness_score = end_points['graspness_score'].squeeze(1)
         objectness_pred = torch.argmax(objectness_score, 1)
@@ -62,48 +63,54 @@ class GraspNet(nn.Module):
         for i in range(B):
             cur_mask = graspable_mask[i]
             # inds = torch.arange(point_num).to(objectness_score.device)
-            graspable_num = cur_mask.sum()
-            graspable_num_batch += graspable_num
-            if graspable_num < 200:
-                if self.log_string is None:
-                    print('Warning!!! Two few graspable points! only {}'.format(graspable_num))
-                else:
-                    self.log_string('Warning!!! Two few graspable points! only {}'.format(graspable_num))
-                cur_mask_danger = cur_mask.detach().clone()
-                cur_mask_danger[:800] = True
-                graspable_num = cur_mask_danger.sum()
-                cur_feat = seed_features_flipped[i][cur_mask_danger]
-                cur_seed_xyz = seed_xyz[i][cur_mask_danger]
-                # cur_inds = inds[cur_mask_danger]
-            else:
-                cur_feat = seed_features_flipped[i][cur_mask]
-                cur_seed_xyz = seed_xyz[i][cur_mask]
-                # cur_inds = inds[cur_mask]
+            # graspable_num = cur_mask.sum()
+            # graspable_num_batch += graspable_num
+            graspable_num_batch += cur_mask.sum()
+            # if graspable_num < 200:
+            #     if self.log_string is None:
+            #         print('Warning!!! Two few graspable points! only {}'.format(graspable_num))
+            #     else:
+            #         self.log_string('Warning!!! Two few graspable points! only {}'.format(graspable_num))
+            #     cur_mask_danger = cur_mask.detach().clone()
+            #     cur_mask_danger[:800] = True
+            #     graspable_num = cur_mask_danger.sum()
+            #     cur_feat = seed_features_flipped[i][cur_mask_danger]
+            #     cur_seed_xyz = seed_xyz[i][cur_mask_danger]
+            #     # cur_inds = inds[cur_mask_danger]
+            # else:
+            cur_feat = seed_features_flipped[i][cur_mask]  # Ns*feat_dim
+            cur_seed_xyz = seed_xyz[i][cur_mask]  # Ns*3
 
-            if graspable_num >= self.M_points:
-                idxs = torch.multinomial(torch.ones(graspable_num), self.M_points, replacement=False)
-            else:
-                idxs1 = torch.arange(graspable_num)
-                idxs2 = torch.multinomial(torch.ones(graspable_num), self.M_points - graspable_num, replacement=True)
-                idxs = torch.cat([idxs1, idxs2])
+            # FPS sample M_points
+            cur_seed_xyz = cur_seed_xyz.unsqueeze(0) # 1*Ns*3
+            fps_idxs = furthest_point_sample(cur_seed_xyz, self.M_points)
+            cur_seed_xyz_flipped = cur_seed_xyz.transpose(1, 2).contiguous()  # 1*3*Ns
+            cur_seed_xyz = gather_operation(cur_seed_xyz_flipped, fps_idxs).transpose(1, 2).squeeze(0).contiguous() # Ns*3
+            cur_feat_flipped = cur_feat.unsqueeze(0).transpose(1, 2).contiguous()  # 1*feat_dim*Ns
+            cur_feat = gather_operation(cur_feat_flipped, fps_idxs).squeeze(0).contiguous() # feat_dim*Ns
 
-            cur_feat = cur_feat[idxs]
-            cur_seed_xyz = cur_seed_xyz[idxs]
-            # cur_inds = cur_inds[idxs]
+            # random sample M_points
+            # if graspable_num >= self.M_points:
+            #     idxs = torch.multinomial(torch.ones(graspable_num), self.M_points, replacement=False)
+            # else:
+            #     idxs1 = torch.arange(graspable_num)
+            #     idxs2 = torch.multinomial(torch.ones(graspable_num), self.M_points - graspable_num, replacement=True)
+            #     idxs = torch.cat([idxs1, idxs2])
+            # cur_feat = cur_feat[idxs]
+            # cur_seed_xyz = cur_seed_xyz[idxs]
+
             seed_features_graspable.append(cur_feat)
             seed_xyz_graspable.append(cur_seed_xyz)
-            # seed_inds_graspable.append(cur_inds)
-        seed_xyz_graspable = torch.stack(seed_xyz_graspable, 0)
-        # seed_inds_graspable = torch.stack(seed_inds_graspable, 0)
-        seed_features_graspable = torch.stack(seed_features_graspable)
-        seed_features_graspable = seed_features_graspable.transpose(1, 2)
+        seed_xyz_graspable = torch.stack(seed_xyz_graspable, 0)  # B*Ns*3
+        seed_features_graspable = torch.stack(seed_features_graspable)  # B*feat_dim*Ns
+        # seed_features_graspable = seed_features_graspable.transpose(1, 2)  # don't need transpose for FPS sample
         end_points['xyz_graspable'] = seed_xyz_graspable
         # end_points['inds_graspable'] = seed_inds_graspable
         end_points['graspable_count_stage1'] = graspable_num_batch / B
 
-        # end_points, res_feat = self.rotation(seed_features_graspable, end_points)
-        # seed_features_graspable = seed_features_graspable + res_feat  # residual feat from view selection
-        end_points = self.rotation(seed_features_graspable, end_points)
+        end_points, res_feat = self.rotation(seed_features_graspable, end_points)
+        seed_features_graspable = seed_features_graspable + res_feat  # residual feat from view selection
+        # end_points = self.rotation(seed_features_graspable, end_points)
 
         if self.is_training:
             end_points = process_grasp_labels(end_points)
@@ -111,10 +118,8 @@ class GraspNet(nn.Module):
         else:
             grasp_top_views_rot = end_points['grasp_top_view_rot']
 
-        seed_features_graspable = seed_features_graspable.contiguous()
-        seed_xyz_graspable = seed_xyz_graspable.contiguous()
-        group_features = self.crop(seed_xyz_graspable, seed_features_graspable, grasp_top_views_rot)
-        end_points = self.swd(group_features, end_points)
+        group_features = self.crop(seed_xyz_graspable.contiguous(), seed_features_graspable.contiguous(), grasp_top_views_rot)
+        end_points = self.swad(group_features, end_points)
 
         return end_points
 

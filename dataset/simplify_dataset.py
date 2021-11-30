@@ -36,7 +36,4 @@ if __name__ == '__main__':
     root = '/media/bot/980A6F5E0A6F38801/datasets/graspnet/'
     save_path = os.path.join(root, 'grasp_label_simplified')
     simplify_grasp_labels(root, save_path)
-    # a = np.load(os.path.join(root, 'grasp_label', '{}_labels.npz'.format(str(0).zfill(3))))
-    # b = np.load(os.path.join(root, 'grasp_label_simplified', '{}_labels.npz'.format(str(0).zfill(3))))
-    # print(a['offsets'], b['width'], a['points'], b['points'],  a['scores'], b['scores'])
-    # print(np.sum(a['offsets'][:, :, :, :, 2] - b['width']), np.max(b['width']), np.max(a['offsets'][:, :, :, :, 2]))
+

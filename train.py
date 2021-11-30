@@ -23,16 +23,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_root', default='/media/bot/980A6F5E0A6F38801/datasets/graspnet')
 parser.add_argument('--camera', default='kinect', help='Camera split [realsense/kinect]')
 parser.add_argument('--checkpoint_path', help='Model checkpoint path',
-                    default='/data/zibo/logs/log_kn_v1/np15000_dim512_graspness_15e-2_M1024_bs2_lr5e-4_epoch10.tar')
+                    default='/data/zibo/logs/log_kn_v5/np15000_dim512_graspness1e-1_M1024_bs2_lr5e-4_viewres_dataaug_epoch07.tar')
 parser.add_argument('--model_name', type=str,
-                    default='np15000_dim512_graspness15e-2_M1024_bs2_lr5e-4')
-parser.add_argument('--log_dir', default='/data/zibo/logs/log_kn_v4')
+                    default='np15000_dim512_graspness1e-1_M1024_bs2_lr8e-4_viewres_dataaug_fps')
+parser.add_argument('--log_dir', default='/data/zibo/logs/log_kn_v6')
 parser.add_argument('--num_point', type=int, default=15000, help='Point Number [default: 20000]')
 parser.add_argument('--seed_feat_dim', default=512, type=int, help='Point wise feature dim')
 parser.add_argument('--voxel_size', type=float, default=0.005, help='Voxel Size to process point clouds ')
-parser.add_argument('--max_epoch', type=int, default=5, help='Epoch to run [default: 18]')
+parser.add_argument('--max_epoch', type=int, default=15, help='Epoch to run [default: 18]')
 parser.add_argument('--batch_size', type=int, default=2, help='Batch Size during training [default: 2]')
-parser.add_argument('--learning_rate', type=float, default=0.0005, help='Initial learning rate [default: 0.001]')
+parser.add_argument('--learning_rate', type=float, default=0.0008, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--resume', default=0, type=int, help='Whether to resume from checkpoint')
 cfgs = parser.parse_args()
 
@@ -62,13 +62,13 @@ grasp_labels = load_grasp_labels(cfgs.dataset_root)
 # grasp_labels=None
 TRAIN_DATASET = GraspNetDataset(cfgs.dataset_root, grasp_labels=grasp_labels, camera=cfgs.camera, split='train',
                                 num_points=cfgs.num_point, voxel_size=cfgs.voxel_size,
-                                remove_outlier=True, augment=False, remove_invisible=False, load_label=True)
+                                remove_outlier=True, augment=True, remove_invisible=False, load_label=True)
 print('train dataset length: ', len(TRAIN_DATASET))
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, batch_size=cfgs.batch_size, shuffle=True,
                               num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=minkowski_collate_fn)
 print('train dataloader length: ', len(TRAIN_DATALOADER))
 
-net = GraspNet(seed_feat_dim=cfgs.seed_feat_dim, is_training=True, log_string=log_string)
+net = GraspNet(seed_feat_dim=cfgs.seed_feat_dim, is_training=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 net.to(device)
 # Load the Adam optimizer

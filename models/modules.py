@@ -21,8 +21,8 @@ class GraspableNet(nn.Module):
     def __init__(self, seed_feature_dim):
         super().__init__()
         self.in_dim = seed_feature_dim
-        self.conv1 = nn.Conv1d(self.in_dim, 128, 1)
-        self.conv_graspable = nn.Conv1d(128, 3, 1)
+        # self.conv1 = nn.Conv1d(self.in_dim, 128, 1)
+        self.conv_graspable = nn.Conv1d(self.in_dim, 3, 1)
 
     def forward(self, seed_features, end_points):
         # features = F.relu(self.bn1(self.conv1(seed_features)), inplace=True)
@@ -30,8 +30,8 @@ class GraspableNet(nn.Module):
         # features = F.relu(self.conv1(seed_features), inplace=True)
         # features = F.relu(self.conv2(features), inplace=True)
 
-        features = F.relu(self.conv1(seed_features), inplace=True)
-        graspable_score = self.conv_graspable(features)  # (B, 3, num_seed)
+        # seed_features = F.relu(self.conv1(seed_features), inplace=True)
+        graspable_score = self.conv_graspable(seed_features)  # (B, 3, num_seed)
         end_points['objectness_score'] = graspable_score[:, :2]
         end_points['graspness_score'] = graspable_score[:, 2]
         return end_points
@@ -79,7 +79,7 @@ class ApproachNet(nn.Module):
             view_score_min, _ = torch.min(view_score_, dim=2)
             view_score_max = view_score_max.unsqueeze(-1).expand(-1, -1, self.num_view)
             view_score_min = view_score_min.unsqueeze(-1).expand(-1, -1, self.num_view)
-            view_score_ = (view_score_ - view_score_min) / (view_score_max - view_score_min + 1e-5)
+            view_score_ = (view_score_ - view_score_min) / (view_score_max - view_score_min + 1e-8)
 
             top_view_inds = []
             for i in range(B):
@@ -101,7 +101,7 @@ class ApproachNet(nn.Module):
             end_points['grasp_top_view_rot'] = vp_rot
 
         end_points['grasp_top_view_inds'] = top_view_inds
-        return end_points #, res_features
+        return end_points, res_features
 
 
 class CloudCrop(nn.Module):

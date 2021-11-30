@@ -21,9 +21,9 @@ from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_root', default='/media/bot/980A6F5E0A6F38801/datasets/graspnet')
 parser.add_argument('--checkpoint_path', help='Model checkpoint path',
-                    default='/data/zibo/logs/log_kn_v2/np15000_dim512_graspness_15e-2_M1024_bs2_lr5e-4_epoch05.tar')
+                    default='/data/zibo/logs/log_kn_v5/np15000_dim512_graspness1e-1_M1024_bs2_lr5e-4_viewres_dataaug_epoch05.tar')
 parser.add_argument('--dump_dir', help='Dump dir to save outputs',
-                    default='/data/zibo/logs/log_kn_v2/dump_epoch05_fps')
+                    default='/data/zibo/logs/log_kn_v5/dump_epoch05')
 parser.add_argument('--seed_feat_dim', default=512, type=int, help='Point wise feature dim')
 parser.add_argument('--camera', default='kinect', help='Camera split [realsense/kinect]')
 parser.add_argument('--num_point', type=int, default=15000, help='Point Number [default: 15000]')
@@ -111,8 +111,8 @@ def inference():
 
 def evaluate(dump_dir):  # changed the graspnetAPI code, it can directly save evaluating results
     ge = GraspNetEval(root=cfgs.dataset_root, camera=cfgs.camera, split='test_seen')
-    ge.eval_seen(dump_folder=dump_dir, proc=6)
-    # ge.eval_scene(scene_id=100, dump_folder=dump_dir)
+    # ge.eval_seen(dump_folder=dump_dir, proc=6)
+    ge.eval_scene(scene_id=100, dump_folder=dump_dir)
 
 
 if __name__ == '__main__':

@@ -41,10 +41,11 @@ def compute_graspness_loss(end_points):
     loss = criterion(graspness_score, graspness_label)
     loss = loss[loss_mask]
     loss = loss.mean()
-    graspness_score_c = graspness_score.clone()
-    graspness_label_c = graspness_label.clone()
-    graspness_score_c[graspness_score_c >= 0.99] = 0.99
-    graspness_label_c[graspness_label_c >= 0.99] = 0.99
+    
+    graspness_score_c = graspness_score.detach().clone()[loss_mask]
+    graspness_label_c = graspness_label.detach().clone()[loss_mask]
+    graspness_score_c = torch.clamp(graspness_score_c, 0., 0.99)
+    graspness_label_c = torch.clamp(graspness_label_c, 0., 0.99)
     rank_error = (torch.abs(torch.trunc(graspness_score_c * 20) - torch.trunc(graspness_label_c * 20)) / 20.).mean()
     end_points['stage1_graspness_acc_rank_error'] = rank_error
     # graspness_score_c[graspness_score_c > 0.15] = 1
@@ -63,8 +64,6 @@ def compute_view_graspness_loss(end_points):
     view_score = end_points['view_score']
     view_label = end_points['batch_grasp_view_graspness']
     loss = criterion(view_score, view_label)
-    # print(view_label[0, 10])
-    # print(view_score[0, 10])
     end_points['loss/stage2_view_loss'] = loss
     return loss, end_points
 
