@@ -31,7 +31,7 @@ class GraspNet(nn.Module):
         self.M_points = M_POINT
         self.num_view = NUM_VIEW
 
-        self.backbone = MinkUNet14C(in_channels=3, out_channels=self.seed_feature_dim, D=3)
+        self.backbone = MinkUNet14D(in_channels=3, out_channels=self.seed_feature_dim, D=3)
         self.graspable = GraspableNet(seed_feature_dim=self.seed_feature_dim)
         self.rotation = ApproachNet(self.num_view, seed_feature_dim=self.seed_feature_dim, is_training=self.is_training)
         self.crop = CloudCrop(nsample=16, cylinder_radius=cylinder_radius, seed_feature_dim=self.seed_feature_dim)

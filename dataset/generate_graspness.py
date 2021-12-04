@@ -14,14 +14,14 @@ from graspnetAPI.utils.utils import get_obj_pose_list, transform_points
 
 if __name__ == '__main__':
     dataset_root = '/media/bot/980A6F5E0A6F38801/datasets/graspnet/'
-    camera_type = 'kinect'
-    save_path_root = '/data/zibo/graspness'
+    camera_type = 'realsense'
+    save_path_root = os.path.join(dataset_root, 'graspness')
 
     num_views, num_angles, num_depths = 300, 12, 4
     fric_coef_thresh = 0.6
     point_grasp_num = num_views * num_angles * num_depths
-    for scene_id in range(100):
-        for ann_id in range(255):
+    for scene_id in range(101):
+        for ann_id in range(256):
             # get scene point cloud
             print('generating scene: {} ann: {}'.format(scene_id, ann_id))
             depth = np.array(Image.open(os.path.join(dataset_root, 'scenes', 'scene_' + str(scene_id).zfill(4),
