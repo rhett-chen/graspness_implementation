@@ -89,7 +89,6 @@ class ApproachNet(nn.Module):
         else:
             _, top_view_inds = torch.max(view_score, dim=2)  # (B, num_seed)
 
-        if not self.is_training:
             top_view_inds_ = top_view_inds.view(B, num_seed, 1, 1).expand(-1, -1, -1, 3).contiguous()
             template_views = generate_grasp_views(self.num_view).to(features.device)  # (num_view, 3)
             template_views = template_views.view(1, 1, self.num_view, 3).expand(B, num_seed, -1, -1).contiguous()  # (B*num_seed*num_view*3)
@@ -132,7 +131,7 @@ class CloudCrop(nn.Module):
                                              use_xyz=True, normalize_xyz=True)
         self.mlps = pt_utils.SharedMLP(mlps, bn=True)
 
-    def forward(self, seed_xyz_graspable, seed_features_graspale, vp_rot):
+    def forward(self, seed_xyz_graspable, seed_features_graspable, vp_rot):
         """ Forward pass.
             Input:
                 seed_xyz: [torch.FloatTensor, (batch_size,num_seed,3)]
@@ -146,7 +145,7 @@ class CloudCrop(nn.Module):
                     features of grouped points in different depths
         """
         grouped_feature = self.grouper(seed_xyz_graspable, seed_xyz_graspable, vp_rot,
-                                       seed_features_graspale)  # B*3 + feat_dim*M*K
+                                       seed_features_graspable)  # B*3 + feat_dim*M*K
         new_features = self.mlps(grouped_feature)  # (batch_size, mlps[-1], M, K)
         new_features = F.max_pool2d(new_features, kernel_size=[1, new_features.size(3)])  # (batch_size, mlps[-1], M, 1)
         new_features = new_features.squeeze(-1)   # (batch_size, mlps[-1], M)

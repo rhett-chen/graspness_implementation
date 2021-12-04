@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(ROOT_DIR)
 
-from models.backbone_resunet14 import MinkUNet14
+from models.backbone_resunet14 import MinkUNet14, MinkUNet14D, MinkUNet14C
 from models.modules import ApproachNet, GraspableNet, CloudCrop, SWADNet
 from loss_utils import GRASP_MAX_WIDTH, NUM_VIEW, NUM_ANGLE, NUM_DEPTH, GRASPNESS_THRESHOLD, M_POINT
 from label_generation import process_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
@@ -31,7 +31,7 @@ class GraspNet(nn.Module):
         self.M_points = M_POINT
         self.num_view = NUM_VIEW
 
-        self.backbone = MinkUNet14(in_channels=3, out_channels=self.seed_feature_dim, D=3)
+        self.backbone = MinkUNet14C(in_channels=3, out_channels=self.seed_feature_dim, D=3)
         self.graspable = GraspableNet(seed_feature_dim=self.seed_feature_dim)
         self.rotation = ApproachNet(self.num_view, seed_feature_dim=self.seed_feature_dim, is_training=self.is_training)
         self.crop = CloudCrop(nsample=16, cylinder_radius=cylinder_radius, seed_feature_dim=self.seed_feature_dim)

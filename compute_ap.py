@@ -2,8 +2,9 @@ import numpy as np
 import os
 
 acc_all = []
-ap_scenes_path = '/data/zibo/cvpr22/logs/log_kn_graspnessrevised_pointnet2_v15_cs/' \
-                 'dump_epoch06_fps/ap_scenes'
+# ap_scenes_path = '/data/zibo/cvpr22/logs/log_kn_graspnessrevised_pointnet2_v15_cs/' \
+#                  'dump_epoch06_fps/ap_scenes'
+ap_scenes_path = '/home/zibo/graspness/logs/log_kn_v9/dump_epoch06/ap_scenes'
 print('For ', ap_scenes_path)
 for index in range(100, 130):
     acc_scene = []

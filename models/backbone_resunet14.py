@@ -188,8 +188,16 @@ class MinkUNet14C(MinkUNet14):
     PLANES = (32, 64, 128, 256, 192, 192, 128, 128)
 
 
-class MinkUNet14D(MinkUNet14):
+class MinkUNet14Dori(MinkUNet14):
     PLANES = (32, 64, 128, 256, 384, 384, 384, 384)
+
+
+class MinkUNet14E(MinkUNet14):
+    PLANES = (32, 64, 128, 256, 384, 384, 384, 384)
+
+
+class MinkUNet14D(MinkUNet14):
+    PLANES = (32, 64, 128, 256, 192, 192, 192, 192)
 
 
 class MinkUNet18A(MinkUNet18):

@@ -22,14 +22,14 @@ def compute_objectness_loss(end_points):
     objectness_score = end_points['objectness_score']
     objectness_label = end_points['objectness_label']
     loss = criterion(objectness_score, objectness_label)
-
     end_points['loss/stage1_objectness_loss'] = loss
-    objectness_pred = torch.argmax(objectness_score, 1)
-    end_points['stage1_objectness_acc'] = (objectness_pred == objectness_label.long()).float().mean()
-    end_points['stage1_objectness_prec'] = (objectness_pred == objectness_label.long())[
-        objectness_pred == 1].float().mean()
-    end_points['stage1_objectness_recall'] = (objectness_pred == objectness_label.long())[
-        objectness_label == 1].float().mean()
+
+    # objectness_pred = torch.argmax(objectness_score, 1)
+    # end_points['stage1_objectness_acc'] = (objectness_pred == objectness_label.long()).float().mean()
+    # end_points['stage1_objectness_prec'] = (objectness_pred == objectness_label.long())[
+    #     objectness_pred == 1].float().mean()
+    # end_points['stage1_objectness_recall'] = (objectness_pred == objectness_label.long())[
+    #     objectness_label == 1].float().mean()
     return loss, end_points
 
 
@@ -42,12 +42,13 @@ def compute_graspness_loss(end_points):
     loss = loss[loss_mask]
     loss = loss.mean()
     
-    graspness_score_c = graspness_score.detach().clone()[loss_mask]
-    graspness_label_c = graspness_label.detach().clone()[loss_mask]
-    graspness_score_c = torch.clamp(graspness_score_c, 0., 0.99)
-    graspness_label_c = torch.clamp(graspness_label_c, 0., 0.99)
-    rank_error = (torch.abs(torch.trunc(graspness_score_c * 20) - torch.trunc(graspness_label_c * 20)) / 20.).mean()
-    end_points['stage1_graspness_acc_rank_error'] = rank_error
+    # graspness_score_c = graspness_score.detach().clone()[loss_mask]
+    # graspness_label_c = graspness_label.detach().clone()[loss_mask]
+    # graspness_score_c = torch.clamp(graspness_score_c, 0., 0.99)
+    # graspness_label_c = torch.clamp(graspness_label_c, 0., 0.99)
+    # rank_error = (torch.abs(torch.trunc(graspness_score_c * 20) - torch.trunc(graspness_label_c * 20)) / 20.).mean()
+    # end_points['stage1_graspness_acc_rank_error'] = rank_error
+
     # graspness_score_c[graspness_score_c > 0.15] = 1
     # graspness_score_c[graspness_score_c <= 0.15] = 0
     # graspness_label_c[graspness_label_c > 0.15] = 1
