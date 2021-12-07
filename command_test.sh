@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=5 python test.py --dump_dir logs/log_kn_v11/dump_epoch10 --checkpoint_path logs/log_kn_v11/np15000_graspness1e-1_bs4_lr1e-3_viewres_dataaug_fps_14D_epoch10.tar --dataset_root /data3/graspnet  --eval

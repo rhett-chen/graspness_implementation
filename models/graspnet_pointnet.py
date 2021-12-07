@@ -7,45 +7,42 @@ import sys
 import numpy as np
 import torch
 import torch.nn as nn
-import MinkowskiEngine as ME
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(ROOT_DIR)
 
-from models.backbone_resunet14 import MinkUNet14D, MinkUNet14C
+from models.backbone import Pointnet2Backbone
 from models.modules import ApproachNet, GraspableNet, CloudCrop, SWADNet
-from loss_utils import GRASP_MAX_WIDTH, NUM_VIEW, NUM_ANGLE, NUM_DEPTH, GRASPNESS_THRESHOLD, M_POINT
+from loss_utils import GRASP_MAX_WIDTH, NUM_VIEW, NUM_ANGLE, NUM_DEPTH, GRASPNESS_THRESHOLD
 from label_generation import process_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
 from pointnet2.pointnet2_utils import furthest_point_sample, gather_operation
 
 
 class GraspNet(nn.Module):
-    def __init__(self, cylinder_radius=0.05, seed_feat_dim=512, is_training=True):
+    def __init__(self, cylinder_radius=0.05, is_training=True):
         super().__init__()
         self.is_training = is_training
-        self.seed_feature_dim = seed_feat_dim
+        self.seed_feature_dim = 256
         self.num_depth = NUM_DEPTH
         self.num_angle = NUM_ANGLE
-        self.M_points = M_POINT
+        self.M_points = 800
         self.num_view = NUM_VIEW
 
-        self.backbone = MinkUNet14D(in_channels=3, out_channels=self.seed_feature_dim, D=3)
+        self.backbone = Pointnet2Backbone()
         self.graspable = GraspableNet(seed_feature_dim=self.seed_feature_dim)
         self.rotation = ApproachNet(self.num_view, seed_feature_dim=self.seed_feature_dim, is_training=self.is_training)
         self.crop = CloudCrop(nsample=16, cylinder_radius=cylinder_radius, seed_feature_dim=self.seed_feature_dim)
         self.swad = SWADNet(num_angle=self.num_angle, num_depth=self.num_depth)
 
     def forward(self, end_points):
-        seed_xyz = end_points['point_clouds']  # use all sampled point cloud, B*Ns*3
-        B, point_num, _ = seed_xyz.shape  # batch _size
+        point_cloud = end_points['point_clouds']  # use all sampled point cloud, B*Ns*3
+        
         # point-wise features
-        coordinates_batch = end_points['coors']
-        features_batch = end_points['feats']
-        mink_input = ME.SparseTensor(features_batch, coordinates=coordinates_batch)
-        seed_features = self.backbone(mink_input).F
-        seed_features = seed_features[end_points['quantize2original']].view(B, point_num, -1).transpose(1, 2)
-
+        seed_features, end_points = self.backbone(point_cloud, end_points)
+        seed_xyz = end_points['sa2_xyz']
+        B, point_num, _ = seed_xyz.shape  # batch _size
+        
         end_points = self.graspable(seed_features, end_points)
         seed_features_flipped = seed_features.transpose(1, 2)  # B*Ns*feat_dim
         objectness_score = end_points['objectness_score']
@@ -99,6 +96,7 @@ class GraspNet(nn.Module):
 def pred_decode(end_points):
     batch_size = len(end_points['point_clouds'])
     grasp_preds = []
+    M_POINT = 800
     for i in range(batch_size):
         grasp_center = end_points['xyz_graspable'][i].float()
 

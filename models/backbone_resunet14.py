@@ -192,10 +192,6 @@ class MinkUNet14Dori(MinkUNet14):
     PLANES = (32, 64, 128, 256, 384, 384, 384, 384)
 
 
-class MinkUNet14E(MinkUNet14):
-    PLANES = (32, 64, 128, 256, 384, 384, 384, 384)
-
-
 class MinkUNet14D(MinkUNet14):
     PLANES = (32, 64, 128, 256, 192, 192, 192, 192)
 

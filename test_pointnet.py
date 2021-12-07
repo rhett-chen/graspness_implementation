@@ -14,8 +14,8 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 sys.path.append(os.path.join(ROOT_DIR, 'dataset'))
 
-from models.graspnet import GraspNet, pred_decode
-from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn
+from models.graspnet_pointnet import GraspNet, pred_decode
+from dataset.graspnet_dataset_pointnet import GraspNetDataset, collate_fn
 # from utils.collision_detector import ModelFreeCollisionDetector
 
 parser = argparse.ArgumentParser()
@@ -48,15 +48,15 @@ def my_worker_init_fn(worker_id):
 
 
 def inference():
-    test_dataset = GraspNetDataset(cfgs.dataset_root, split='mini_test', camera=cfgs.camera, num_points=cfgs.num_point,
-                                   voxel_size=cfgs.voxel_size, remove_outlier=True, augment=False, load_label=False)
+    test_dataset = GraspNetDataset(cfgs.dataset_root, split='test_seen', camera=cfgs.camera, num_points=cfgs.num_point,
+                                   remove_outlier=True, augment=False, load_label=False)
     print('Test dataset length: ', len(test_dataset))
     scene_list = test_dataset.scene_list()
     test_dataloader = DataLoader(test_dataset, batch_size=cfgs.batch_size, shuffle=False,
-                                 num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=minkowski_collate_fn)
+                                 num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=collate_fn)
     print('Test dataloader length: ', len(test_dataloader))
     # Init the model
-    net = GraspNet(seed_feat_dim=cfgs.seed_feat_dim, is_training=False)
+    net = GraspNet(is_training=False)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net.to(device)
     # Load checkpoint
@@ -111,8 +111,8 @@ def inference():
 
 def evaluate(dump_dir):  # changed the graspnetAPI code, it can directly save evaluating results
     ge = GraspNetEval(root=cfgs.dataset_root, camera=cfgs.camera, split='test_seen')
-    # ge.eval_novel(dump_folder=dump_dir, proc=6)
-    ge.eval_scene(scene_id=100, dump_folder=dump_dir)
+    ge.eval_seen(dump_folder=dump_dir, proc=2)
+    # ge.eval_scene(scene_id=100, dump_folder=dump_dir)
 
 
 if __name__ == '__main__':

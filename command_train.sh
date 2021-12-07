@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=4 python train.py --log_dir logs/log_kn_v9 --batch_size 4 --learning_rate 0.001 --model_name np15000_graspness1e-1_bs4_lr1e-3_viewres_dataaug_fps_14C --dataset_root /data3/graspnet
+CUDA_VISIBLE_DEVICES=5 python train.py --log_dir logs/log_kn_v11 --batch_size 4 --learning_rate 0.001 --model_name np15000_graspness1e-1_bs4_lr1e-3_viewres_dataaug_fps_14D --dataset_root /data3/graspnet

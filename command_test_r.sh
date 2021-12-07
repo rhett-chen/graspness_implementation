@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=5 python test.py --camera realsense --dump_dir logs/log_kn_v11_r/dump_epoch06 --checkpoint_path logs/log_kn_v11_r/np15000_graspness1e-1_bs4_lr1e-3_viewres_dataaug_fps_14D_realsense_epoch06.tar --dataset_root /data3/graspnet  --infer

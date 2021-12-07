@@ -15,24 +15,22 @@ sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 sys.path.append(os.path.join(ROOT_DIR, 'dataset'))
 
-from models.graspnet import GraspNet
-from models.loss import get_loss
-from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn, load_grasp_labels
+from models.graspnet_pointnet import GraspNet
+from models.loss_pointnet import get_loss
+from dataset.graspnet_dataset_pointnet import GraspNetDataset, collate_fn, load_grasp_labels
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_root', default='/media/bot/980A6F5E0A6F38801/datasets/graspnet')
 parser.add_argument('--camera', default='kinect', help='Camera split [realsense/kinect]')
 parser.add_argument('--checkpoint_path', help='Model checkpoint path',
-                    default='/data/zibo/logs/log_kn_v8/np15000_graspness1e-1_bs2_lr7e-4_viewres_dataaug_fps_14D_epoch08.tar')
+                    default='/data/zibo/logs/log_kn_v8/np15000_graspness1e-1_bs2_lr7e-4_viewres_dataaug_fps_14D_epoch03.tar')
 parser.add_argument('--model_name', type=str,
-                    default='np15000_graspness1e-1_bs2_lr7e-4_viewres_dataaug_fps_14D')
-parser.add_argument('--log_dir', default='/data/zibo/logs/log_kn_v8')
+                    default='np15000_graspness1e-1_bs4_lr1e-3_viewres_dataaug_fps_pointnet2')
+parser.add_argument('--log_dir', default='/data/zibo/logs/log_kn_pointnet_v9')
 parser.add_argument('--num_point', type=int, default=15000, help='Point Number [default: 20000]')
-parser.add_argument('--seed_feat_dim', default=512, type=int, help='Point wise feature dim')
-parser.add_argument('--voxel_size', type=float, default=0.005, help='Voxel Size to process point clouds ')
 parser.add_argument('--max_epoch', type=int, default=15, help='Epoch to run [default: 18]')
-parser.add_argument('--batch_size', type=int, default=1, help='Batch Size during training [default: 2]')
-parser.add_argument('--learning_rate', type=float, default=0.0007, help='Initial learning rate [default: 0.001]')
+parser.add_argument('--batch_size', type=int, default=4, help='Batch Size during training [default: 2]')
+parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--resume', default=0, type=int, help='Whether to resume from checkpoint')
 cfgs = parser.parse_args()
 
@@ -61,14 +59,14 @@ def my_worker_init_fn(worker_id):
 grasp_labels = load_grasp_labels(cfgs.dataset_root)
 # grasp_labels=None
 TRAIN_DATASET = GraspNetDataset(cfgs.dataset_root, grasp_labels=grasp_labels, camera=cfgs.camera, split='train',
-                                num_points=cfgs.num_point, voxel_size=cfgs.voxel_size,
+                                num_points=cfgs.num_point, 
                                 remove_outlier=True, augment=True, remove_invisible=False, load_label=True)
 print('train dataset length: ', len(TRAIN_DATASET))
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, batch_size=cfgs.batch_size, shuffle=True,
-                              num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=minkowski_collate_fn)
+                              num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=collate_fn)
 print('train dataloader length: ', len(TRAIN_DATALOADER))
 
-net = GraspNet(seed_feat_dim=cfgs.seed_feat_dim, is_training=True)
+net = GraspNet(is_training=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 net.to(device)
 # Load the Adam optimizer
