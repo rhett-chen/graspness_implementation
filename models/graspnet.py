@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 sys.path.append(ROOT_DIR)
 
-from models.backbone_resunet14 import MinkUNet14, MinkUNet14D, MinkUNet14C
+from models.backbone_resunet14 import MinkUNet14D
 from models.modules import ApproachNet, GraspableNet, CloudCrop, SWADNet
 from loss_utils import GRASP_MAX_WIDTH, NUM_VIEW, NUM_ANGLE, NUM_DEPTH, GRASPNESS_THRESHOLD, M_POINT
 from label_generation import process_grasp_labels, match_grasp_view_and_label, batch_viewpoint_params_to_matrix
@@ -24,7 +24,6 @@ class GraspNet(nn.Module):
     def __init__(self, cylinder_radius=0.05, seed_feat_dim=512, is_training=True):
         super().__init__()
         self.is_training = is_training
-        # self.log_string = log_string
         self.seed_feature_dim = seed_feat_dim
         self.num_depth = NUM_DEPTH
         self.num_angle = NUM_ANGLE
@@ -58,26 +57,10 @@ class GraspNet(nn.Module):
 
         seed_features_graspable = []
         seed_xyz_graspable = []
-        # seed_inds_graspable = []
         graspable_num_batch = 0.
         for i in range(B):
             cur_mask = graspable_mask[i]
-            # inds = torch.arange(point_num).to(objectness_score.device)
-            # graspable_num = cur_mask.sum()
-            # graspable_num_batch += graspable_num
             graspable_num_batch += cur_mask.sum()
-            # if graspable_num < 200:
-            #     if self.log_string is None:
-            #         print('Warning!!! Two few graspable points! only {}'.format(graspable_num))
-            #     else:
-            #         self.log_string('Warning!!! Two few graspable points! only {}'.format(graspable_num))
-            #     cur_mask_danger = cur_mask.detach().clone()
-            #     cur_mask_danger[:800] = True
-            #     graspable_num = cur_mask_danger.sum()
-            #     cur_feat = seed_features_flipped[i][cur_mask_danger]
-            #     cur_seed_xyz = seed_xyz[i][cur_mask_danger]
-            #     # cur_inds = inds[cur_mask_danger]
-            # else:
             cur_feat = seed_features_flipped[i][cur_mask]  # Ns*feat_dim
             cur_seed_xyz = seed_xyz[i][cur_mask]  # Ns*3
 
@@ -89,28 +72,15 @@ class GraspNet(nn.Module):
             cur_feat_flipped = cur_feat.unsqueeze(0).transpose(1, 2).contiguous()  # 1*feat_dim*Ns
             cur_feat = gather_operation(cur_feat_flipped, fps_idxs).squeeze(0).contiguous() # feat_dim*Ns
 
-            # random sample M_points
-            # if graspable_num >= self.M_points:
-            #     idxs = torch.multinomial(torch.ones(graspable_num), self.M_points, replacement=False)
-            # else:
-            #     idxs1 = torch.arange(graspable_num)
-            #     idxs2 = torch.multinomial(torch.ones(graspable_num), self.M_points - graspable_num, replacement=True)
-            #     idxs = torch.cat([idxs1, idxs2])
-            # cur_feat = cur_feat[idxs]
-            # cur_seed_xyz = cur_seed_xyz[idxs]
-
             seed_features_graspable.append(cur_feat)
             seed_xyz_graspable.append(cur_seed_xyz)
         seed_xyz_graspable = torch.stack(seed_xyz_graspable, 0)  # B*Ns*3
         seed_features_graspable = torch.stack(seed_features_graspable)  # B*feat_dim*Ns
-        # seed_features_graspable = seed_features_graspable.transpose(1, 2)  # don't need transpose for FPS sample
         end_points['xyz_graspable'] = seed_xyz_graspable
-        # end_points['inds_graspable'] = seed_inds_graspable
         end_points['graspable_count_stage1'] = graspable_num_batch / B
 
         end_points, res_feat = self.rotation(seed_features_graspable, end_points)
         seed_features_graspable = seed_features_graspable + res_feat  # residual feat from view selection
-        # end_points = self.rotation(seed_features_graspable, end_points)
 
         if self.is_training:
             end_points = process_grasp_labels(end_points)
@@ -137,7 +107,7 @@ def pred_decode(end_points):
         grasp_angle = (grasp_score_inds // NUM_DEPTH) * np.pi / 12
         grasp_depth = (grasp_score_inds % NUM_DEPTH + 1) * 0.01
         grasp_depth = grasp_depth.view(-1, 1)
-        grasp_width = 1.2 * end_points['grasp_width_pred'][i] / 10.  # grasp width gt has been multiplied by 10
+        grasp_width = 1.2 * end_points['grasp_width_pred'][i] / 10.
         grasp_width = grasp_width.view(M_POINT, NUM_ANGLE*NUM_DEPTH)
         grasp_width = torch.gather(grasp_width, 1, grasp_score_inds.view(-1, 1))
         grasp_width = torch.clamp(grasp_width, min=0., max=GRASP_MAX_WIDTH)

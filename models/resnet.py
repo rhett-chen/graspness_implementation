@@ -1,9 +1,4 @@
-import os
-import numpy as np
-
-import torch
 import torch.nn as nn
-from torch.optim import SGD
 
 try:
     import open3d as o3d

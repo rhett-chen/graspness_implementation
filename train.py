@@ -20,13 +20,11 @@ from models.loss import get_loss
 from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn, load_grasp_labels
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_root', default='/media/bot/980A6F5E0A6F38801/datasets/graspnet')
+parser.add_argument('--dataset_root', default=None, required=True)
 parser.add_argument('--camera', default='kinect', help='Camera split [realsense/kinect]')
-parser.add_argument('--checkpoint_path', help='Model checkpoint path',
-                    default='/data/zibo/logs/log_kn_v8/np15000_graspness1e-1_bs2_lr7e-4_viewres_dataaug_fps_14D_epoch03.tar')
-parser.add_argument('--model_name', type=str,
-                    default='np15000_graspness1e-1_bs2_lr7e-4_viewres_dataaug_fps_14D')
-parser.add_argument('--log_dir', default='/data/zibo/logs/log_kn_v8')
+parser.add_argument('--checkpoint_path', help='Model checkpoint path', default=None)
+parser.add_argument('--model_name', type=str, default=None)
+parser.add_argument('--log_dir', default='logs/log')
 parser.add_argument('--num_point', type=int, default=15000, help='Point Number [default: 20000]')
 parser.add_argument('--seed_feat_dim', default=512, type=int, help='Point wise feature dim')
 parser.add_argument('--voxel_size', type=float, default=0.005, help='Voxel Size to process point clouds ')
@@ -35,7 +33,6 @@ parser.add_argument('--batch_size', type=int, default=2, help='Batch Size during
 parser.add_argument('--learning_rate', type=float, default=0.0007, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--resume', default=0, type=int, help='Whether to resume from checkpoint')
 cfgs = parser.parse_args()
-
 # ------------------------------------------------------------------------- GLOBAL CONFIG BEG
 EPOCH_CNT = 0
 CHECKPOINT_PATH = cfgs.checkpoint_path if cfgs.checkpoint_path is not None and cfgs.resume else None
@@ -59,10 +56,9 @@ def my_worker_init_fn(worker_id):
 
 
 grasp_labels = load_grasp_labels(cfgs.dataset_root)
-# grasp_labels=None
 TRAIN_DATASET = GraspNetDataset(cfgs.dataset_root, grasp_labels=grasp_labels, camera=cfgs.camera, split='train',
                                 num_points=cfgs.num_point, voxel_size=cfgs.voxel_size,
-                                remove_outlier=True, augment=True, remove_invisible=False, load_label=True)
+                                remove_outlier=True, augment=True, load_label=True)
 print('train dataset length: ', len(TRAIN_DATASET))
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, batch_size=cfgs.batch_size, shuffle=True,
                               num_workers=0, worker_init_fn=my_worker_init_fn, collate_fn=minkowski_collate_fn)

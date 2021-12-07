@@ -21,16 +21,9 @@ class GraspableNet(nn.Module):
     def __init__(self, seed_feature_dim):
         super().__init__()
         self.in_dim = seed_feature_dim
-        # self.conv1 = nn.Conv1d(self.in_dim, 128, 1)
         self.conv_graspable = nn.Conv1d(self.in_dim, 3, 1)
 
     def forward(self, seed_features, end_points):
-        # features = F.relu(self.bn1(self.conv1(seed_features)), inplace=True)
-        # features = F.relu(self.bn2(self.conv2(features)), inplace=True)
-        # features = F.relu(self.conv1(seed_features), inplace=True)
-        # features = F.relu(self.conv2(features), inplace=True)
-
-        # seed_features = F.relu(self.conv1(seed_features), inplace=True)
         graspable_score = self.conv_graspable(seed_features)  # (B, 3, num_seed)
         end_points['objectness_score'] = graspable_score[:, :2]
         end_points['graspness_score'] = graspable_score[:, 2]
@@ -39,14 +32,6 @@ class GraspableNet(nn.Module):
 
 class ApproachNet(nn.Module):
     def __init__(self, num_view, seed_feature_dim, is_training=True):
-        """ Approach vector estimation from seed point features.
-
-            Input:
-                num_view: [int]
-                    number of views generated from each each seed point
-                seed_feature_dim: [int]
-                    number of channels of seed point features
-        """
         super().__init__()
         self.num_view = num_view
         self.in_dim = seed_feature_dim
@@ -55,23 +40,12 @@ class ApproachNet(nn.Module):
         self.conv2 = nn.Conv1d(self.in_dim, self.num_view, 1)
 
     def forward(self, seed_features, end_points):
-        """ Forward pass.
-
-            Input:
-                seed_features: [torch.FloatTensor, (batch_size,feature_dim,num_seed)
-                    features of seed points
-                end_points: [dict]
-
-            Output:
-                end_points: [dict]
-        """
         B, _, num_seed = seed_features.size()
         res_features = F.relu(self.conv1(seed_features), inplace=True)
         features = self.conv2(res_features)
         view_score = features.transpose(1, 2).contiguous() # (B, num_seed, num_view)
         end_points['view_score'] = view_score
 
-        # print(view_score.min(), view_score.max(), view_score.mean())
         if self.is_training:
             # normalize view graspness score to 0~1
             view_score_ = view_score.clone().detach()
@@ -104,20 +78,6 @@ class ApproachNet(nn.Module):
 
 
 class CloudCrop(nn.Module):
-    """ Cylinder group and align for grasp configure estimation. Return a list of grouped points with different cropping depths.
-        Input:
-            nsample: [int]
-                sample number in a group
-            seed_feature_dim: [int]
-                number of channels of grouped points
-            cylinder_radius: [float]
-                radius of the cylinder space
-            hmin: [float]
-                height of the bottom surface
-            hmax_list: [list of float]
-                list of heights of the upper surface
-    """
-
     def __init__(self, nsample, seed_feature_dim, cylinder_radius=0.05, hmin=-0.02, hmax=0.04):
         super().__init__()
         self.nsample = nsample
@@ -125,25 +85,11 @@ class CloudCrop(nn.Module):
         self.cylinder_radius = cylinder_radius
         mlps = [3 + self.in_dim, 256, 256]   # use xyz, so plus 3
 
-        # returned group features without xyz, normalize xyz as graspness paper
-        # (i don't know if features with xyz will be better)
         self.grouper = CylinderQueryAndGroup(radius=cylinder_radius, hmin=hmin, hmax=hmax, nsample=nsample,
                                              use_xyz=True, normalize_xyz=True)
         self.mlps = pt_utils.SharedMLP(mlps, bn=True)
 
     def forward(self, seed_xyz_graspable, seed_features_graspable, vp_rot):
-        """ Forward pass.
-            Input:
-                seed_xyz: [torch.FloatTensor, (batch_size,num_seed,3)]
-                    coordinates of seed points
-                pointcloud: [torch.FloatTensor, (batch_size,num_seed,3)]
-                    the points to be cropped
-                vp_rot: [torch.FloatTensor, (batch_size,num_seed,3,3)]
-                    rotation matrices generated from approach vectors
-            Output:
-                vp_features: [torch.FloatTensor, (batch_size,num_features,num_seed,num_depth)]
-                    features of grouped points in different depths
-        """
         grouped_feature = self.grouper(seed_xyz_graspable, seed_xyz_graspable, vp_rot,
                                        seed_features_graspable)  # B*3 + feat_dim*M*K
         new_features = self.mlps(grouped_feature)  # (batch_size, mlps[-1], M, K)
@@ -153,15 +99,6 @@ class CloudCrop(nn.Module):
 
 
 class SWADNet(nn.Module):
-    """ Grasp configure estimation.
-
-        Input:
-            num_angle: [int]
-                number of in-plane rotation angle classes
-                the value of the i-th class --> i*PI/num_angle (i=0,...,num_angle-1)
-            num_depth: [int]
-                number of gripper depth classes
-    """
     def __init__(self, num_angle, num_depth):
         super().__init__()
         self.num_angle = num_angle
@@ -171,16 +108,6 @@ class SWADNet(nn.Module):
         self.conv_swad = nn.Conv1d(256, 2*num_angle*num_depth, 1)
 
     def forward(self, vp_features, end_points):
-        """ Forward pass.
-
-            Input:
-                vp_features: [torch.FloatTensor, (batch_size,num_seed,3)]
-                    features of grouped points in different depths
-                end_points: [dict]
-
-            Output:
-                end_points: [dict]
-        """
         B, _, num_seed = vp_features.size()
         vp_features = F.relu(self.conv1(vp_features), inplace=True)
         vp_features = self.conv_swad(vp_features)

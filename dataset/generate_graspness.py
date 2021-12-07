@@ -10,17 +10,24 @@ from knn.knn_modules import knn
 import torch
 from graspnetAPI.utils.xmlhandler import xmlReader
 from graspnetAPI.utils.utils import get_obj_pose_list, transform_points
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset_root', default=None, required=True)
+parser.add_argument('--camera_type', default='kinect', help='Camera split [realsense/kinect]')
 
 
 if __name__ == '__main__':
-    dataset_root = '/media/bot/980A6F5E0A6F38801/datasets/graspnet/'
-    camera_type = 'realsense'
+    cfgs = parser.parse_args()
+    dataset_root = cfgs.dataset_root   # set dataset root
+    camera_type = cfgs.camera_type   # kinect / realsense
     save_path_root = os.path.join(dataset_root, 'graspness')
 
     num_views, num_angles, num_depths = 300, 12, 4
     fric_coef_thresh = 0.6
     point_grasp_num = num_views * num_angles * num_depths
-    for scene_id in range(101):
+    for scene_id in range(100):
         for ann_id in range(256):
             # get scene point cloud
             print('generating scene: {} ann: {}'.format(scene_id, ann_id))

@@ -1,7 +1,10 @@
-from tqdm import tqdm
 import numpy as np
 import os
-import scipy.io as scio
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset_root', default=None, required=True)
 
 
 def simplify_grasp_labels(root, save_path):
@@ -33,7 +36,8 @@ def simplify_grasp_labels(root, save_path):
 
 
 if __name__ == '__main__':
-    root = '/media/bot/980A6F5E0A6F38801/datasets/graspnet/'
+    cfgs = parser.parse_args()
+    root = cfgs.dataset_root  # set root and save path
     save_path = os.path.join(root, 'grasp_label_simplified')
     simplify_grasp_labels(root, save_path)
 

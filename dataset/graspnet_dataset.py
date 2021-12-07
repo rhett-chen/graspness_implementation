@@ -18,14 +18,13 @@ from data_utils import CameraInfo, transform_point_cloud, create_point_cloud_fro
 
 class GraspNetDataset(Dataset):
     def __init__(self, root, grasp_labels=None, camera='kinect', split='train', num_points=20000,
-                 voxel_size=0.005, remove_outlier=True, remove_invisible=False, augment=False, load_label=True):
+                 voxel_size=0.005, remove_outlier=True, augment=False, load_label=True):
         assert (num_points <= 50000)
         self.root = root
         self.split = split
         self.voxel_size = voxel_size
         self.num_points = num_points
         self.remove_outlier = remove_outlier
-        self.remove_invisible = remove_invisible
         self.grasp_labels = grasp_labels
         self.camera = camera
         self.augment = augment
@@ -42,8 +41,6 @@ class GraspNetDataset(Dataset):
             self.sceneIds = list(range(130, 160))
         elif split == 'test_novel':
             self.sceneIds = list(range(160, 190))
-        elif split == 'mini_test':
-            self.sceneIds = list(range(100, 101))
         self.sceneIds = ['scene_{}'.format(str(x).zfill(4)) for x in self.sceneIds]
 
         self.depthpath = []
@@ -100,8 +97,7 @@ class GraspNetDataset(Dataset):
         else:
             return self.get_data(index)
 
-    def get_data(self, index):
-        # color = np.array(Image.open(self.colorpath[index]), dtype=np.float32) / 255.0
+    def get_data(self, index, return_raw_cloud=False):
         depth = np.array(Image.open(self.depthpath[index]))
         seg = np.array(Image.open(self.labelpath[index]))
         meta = scio.loadmat(self.metapath[index])
@@ -120,7 +116,6 @@ class GraspNetDataset(Dataset):
 
         # get valid points
         depth_mask = (depth > 0)
-        # seg_mask = (seg > 0)
         if self.remove_outlier:
             camera_poses = np.load(os.path.join(self.root, 'scenes', scene, self.camera, 'camera_poses.npy'))
             align_mat = np.load(os.path.join(self.root, 'scenes', scene, self.camera, 'cam0_wrt_table.npy'))
@@ -130,8 +125,9 @@ class GraspNetDataset(Dataset):
         else:
             mask = depth_mask
         cloud_masked = cloud[mask]
-        # seg_masked = seg[mask]
 
+        if return_raw_cloud:
+            return cloud_masked
         # sample points random
         if len(cloud_masked) >= self.num_points:
             idxs = np.random.choice(len(cloud_masked), self.num_points, replace=False)
@@ -139,9 +135,6 @@ class GraspNetDataset(Dataset):
             idxs1 = np.arange(len(cloud_masked))
             idxs2 = np.random.choice(len(cloud_masked), self.num_points - len(cloud_masked), replace=True)
             idxs = np.concatenate([idxs1, idxs2], axis=0)
-
-        # idxs_id = int(self.depthpath[index].split('scene_')[-1][:4]) * 256 + int(self.depthpath[index][-8:-4])
-        # idxs = np.load('/data/cloud_inds_{}/{}.npy'.format(self.camera, idxs_id))[0]   # for bot
         cloud_sampled = cloud_masked[idxs]
 
         ret_dict = {'point_clouds': cloud_sampled.astype(np.float32),
@@ -151,7 +144,6 @@ class GraspNetDataset(Dataset):
         return ret_dict
 
     def get_data_label(self, index):
-        # color = np.array(Image.open(self.colorpath[index]), dtype=np.float32) / 255.0
         depth = np.array(Image.open(self.depthpath[index]))
         seg = np.array(Image.open(self.labelpath[index]))
         meta = scio.loadmat(self.metapath[index])
@@ -182,7 +174,6 @@ class GraspNetDataset(Dataset):
         else:
             mask = depth_mask
         cloud_masked = cloud[mask]
-        # color_masked = color[mask]
         seg_masked = seg[mask]
 
         # sample points
@@ -193,7 +184,6 @@ class GraspNetDataset(Dataset):
             idxs2 = np.random.choice(len(cloud_masked), self.num_points - len(cloud_masked), replace=True)
             idxs = np.concatenate([idxs1, idxs2], axis=0)
         cloud_sampled = cloud_masked[idxs]
-        # color_sampled = color_masked[idxs]
         seg_sampled = seg_masked[idxs]
         graspness_sampled = graspness[idxs]
         objectness_label = seg_sampled.copy()
@@ -210,15 +200,6 @@ class GraspNetDataset(Dataset):
             object_poses_list.append(poses[:, :, i])
             points, widths, scores = self.grasp_labels[obj_idx]
             collision = self.collision_labels[scene][i]  # (Np, V, A, D)
-
-            # remove invisible grasp points
-            if self.remove_invisible:
-                visible_mask = remove_invisible_grasp_points(cloud_sampled[seg_sampled == obj_idx], points,
-                                                             poses[:, :, i], th=0.01)
-                points = points[visible_mask]
-                widths = widths[visible_mask]
-                scores = scores[visible_mask]
-                collision = collision[visible_mask]
 
             idxs = np.random.choice(len(points), min(max(int(len(points) / 4), 300), len(points)), replace=False)
             grasp_points_list.append(points[idxs])

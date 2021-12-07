@@ -22,7 +22,6 @@ def process_grasp_labels(end_points):
     batch_size, num_samples, _ = seed_xyzs.size()
 
     batch_grasp_points = []
-    # batch_grasp_views = []
     batch_grasp_views_rot = []
     batch_grasp_scores = []
     batch_grasp_widths = []
@@ -32,7 +31,6 @@ def process_grasp_labels(end_points):
 
         # get merged grasp points for label computation
         grasp_points_merged = []
-        # grasp_views_merged = []
         grasp_views_rot_merged = []
         grasp_scores_merged = []
         grasp_widths_merged = []
@@ -55,8 +53,6 @@ def process_grasp_labels(end_points):
             grasp_views_ = grasp_views.transpose(0, 1).contiguous().unsqueeze(0)
             grasp_views_trans_ = grasp_views_trans.transpose(0, 1).contiguous().unsqueeze(0)
             view_inds = knn(grasp_views_trans_, grasp_views_, k=1).squeeze() - 1
-            # grasp_views_trans = torch.index_select(grasp_views_trans, 0, view_inds)  # (V, 3)
-            # grasp_views_trans = grasp_views_trans.unsqueeze(0).expand(num_grasp_points, -1, -1)  # (Np, V, 3)
             grasp_views_rot_trans = torch.index_select(grasp_views_rot_trans, 0, view_inds)  # (V, 3, 3)
             grasp_views_rot_trans = grasp_views_rot_trans.unsqueeze(0).expand(num_grasp_points, -1, -1,
                                                                               -1)  # (Np, V, 3, 3)
@@ -64,13 +60,11 @@ def process_grasp_labels(end_points):
             grasp_widths = torch.index_select(grasp_widths, 1, view_inds)  # (Np, V, A, D)
             # add to list
             grasp_points_merged.append(grasp_points_trans)
-            # grasp_views_merged.append(grasp_views_trans)
             grasp_views_rot_merged.append(grasp_views_rot_trans)
             grasp_scores_merged.append(grasp_scores)
             grasp_widths_merged.append(grasp_widths)
 
         grasp_points_merged = torch.cat(grasp_points_merged, dim=0)  # (Np', 3)
-        # grasp_views_merged = torch.cat(grasp_views_merged, dim=0)  # (Np', V, 3)
         grasp_views_rot_merged = torch.cat(grasp_views_rot_merged, dim=0)  # (Np', V, 3, 3)
         grasp_scores_merged = torch.cat(grasp_scores_merged, dim=0)  # (Np', V, A, D)
         grasp_widths_merged = torch.cat(grasp_widths_merged, dim=0)  # (Np', V, A, D)
@@ -82,20 +76,17 @@ def process_grasp_labels(end_points):
 
         # assign anchor points to real points
         grasp_points_merged = torch.index_select(grasp_points_merged, 0, nn_inds)  # (Ns, 3)
-        # grasp_views_merged = torch.index_select(grasp_views_merged, 0, nn_inds)  # (Ns, V, 3)
         grasp_views_rot_merged = torch.index_select(grasp_views_rot_merged, 0, nn_inds)  # (Ns, V, 3, 3)
         grasp_scores_merged = torch.index_select(grasp_scores_merged, 0, nn_inds)  # (Ns, V, A, D)
         grasp_widths_merged = torch.index_select(grasp_widths_merged, 0, nn_inds)  # (Ns, V, A, D)
 
         # add to batch
         batch_grasp_points.append(grasp_points_merged)
-        # batch_grasp_views.append(grasp_views_merged)
         batch_grasp_views_rot.append(grasp_views_rot_merged)
         batch_grasp_scores.append(grasp_scores_merged)
         batch_grasp_widths.append(grasp_widths_merged)
 
     batch_grasp_points = torch.stack(batch_grasp_points, 0)  # (B, Ns, 3)
-    # batch_grasp_views = torch.stack(batch_grasp_views, 0)  # (B, Ns, V, 3)
     batch_grasp_views_rot = torch.stack(batch_grasp_views_rot, 0)  # (B, Ns, V, 3, 3)
     batch_grasp_scores = torch.stack(batch_grasp_scores, 0)  # (B, Ns, V, A, D)
     batch_grasp_widths = torch.stack(batch_grasp_widths, 0)  # (B, Ns, V, A, D)
@@ -111,13 +102,9 @@ def process_grasp_labels(end_points):
     view_graspness_max = view_graspness_max.unsqueeze(-1).expand(-1, -1, 300)  # (B, Ns, V)
     view_graspness_min = view_graspness_min.unsqueeze(-1).expand(-1, -1, 300)  # same shape as batch_grasp_view_graspness
     batch_grasp_view_graspness = (batch_grasp_view_graspness - view_graspness_min) / (view_graspness_max - view_graspness_min + 1e-5)
-    # batch_grasp_view_graspness = torch.clamp(batch_grasp_view_graspness, 0., 1.)
 
     # process scores
     label_mask = (batch_grasp_scores > 0) & (batch_grasp_widths <= GRASP_MAX_WIDTH)  # (B, Ns, V, A, D)
-    # u_max = batch_grasp_scores.max()
-    # u_min = batch_grasp_scores[label_mask].min()
-    # batch_grasp_scores[label_mask] = torch.log(u_max / batch_grasp_scores[label_mask]) / torch.log(u_max / u_min)
     batch_grasp_scores[~label_mask] = 0
 
     end_points['batch_grasp_point'] = batch_grasp_points

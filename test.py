@@ -5,8 +5,7 @@ import argparse
 import time
 import torch
 from torch.utils.data import DataLoader
-# from graspnetAPI.graspnet_eval import GraspGroup, GraspNetEval
-from graspnetAPI.graspnet_eval_zibo import GraspGroup, GraspNetEval  # change the library code to save eval results
+from graspnetAPI.graspnet_eval import GraspGroup, GraspNetEval
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(ROOT_DIR, 'pointnet2'))
@@ -16,14 +15,12 @@ sys.path.append(os.path.join(ROOT_DIR, 'dataset'))
 
 from models.graspnet import GraspNet, pred_decode
 from dataset.graspnet_dataset import GraspNetDataset, minkowski_collate_fn
-# from utils.collision_detector import ModelFreeCollisionDetector
+from utils.collision_detector import ModelFreeCollisionDetector
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset_root', default='/media/bot/980A6F5E0A6F38801/datasets/graspnet')
-parser.add_argument('--checkpoint_path', help='Model checkpoint path',
-                    default='/data/zibo/logs/log_kn_v7/np15000_dim512_graspness1e-1_M1024_bs2_lr5e-4_viewres_dataaug_fps_epoch05.tar')
-parser.add_argument('--dump_dir', help='Dump dir to save outputs',
-                    default='/data/zibo/logs/log_kn_v7/dump_epoch05')
+parser.add_argument('--dataset_root', default=None, required=True)
+parser.add_argument('--checkpoint_path', help='Model checkpoint path', default=None, required=True)
+parser.add_argument('--dump_dir', help='Dump dir to save outputs', default=None, required=True)
 parser.add_argument('--seed_feat_dim', default=512, type=int, help='Point wise feature dim')
 parser.add_argument('--camera', default='kinect', help='Camera split [realsense/kinect]')
 parser.add_argument('--num_point', type=int, default=15000, help='Point Number [default: 15000]')
@@ -48,7 +45,7 @@ def my_worker_init_fn(worker_id):
 
 
 def inference():
-    test_dataset = GraspNetDataset(cfgs.dataset_root, split='mini_test', camera=cfgs.camera, num_points=cfgs.num_point,
+    test_dataset = GraspNetDataset(cfgs.dataset_root, split='test_seen', camera=cfgs.camera, num_points=cfgs.num_point,
                                    voxel_size=cfgs.voxel_size, remove_outlier=True, augment=False, load_label=False)
     print('Test dataset length: ', len(test_dataset))
     scene_list = test_dataset.scene_list()
@@ -90,11 +87,11 @@ def inference():
 
             gg = GraspGroup(preds)
             # collision detection
-            # if cfgs.collision_thresh > 0:
-            #     cloud, _ = test.get_data(data_idx, return_raw_cloud=True)
-            #     mfcdetector = ModelFreeCollisionDetector(cloud, voxel_size=cfgs.voxel_size)
-            #     collision_mask = mfcdetector.detect(gg, approach_dist=0.05, collision_thresh=cfgs.collision_thresh)
-            #     gg = gg[~collision_mask]
+            if cfgs.collision_thresh > 0:
+                cloud = test_dataset.get_data(data_idx, return_raw_cloud=True)
+                mfcdetector = ModelFreeCollisionDetector(cloud, voxel_size=cfgs.voxel_size_cd)
+                collision_mask = mfcdetector.detect(gg, approach_dist=0.05, collision_thresh=cfgs.collision_thresh)
+                gg = gg[~collision_mask]
 
             # save grasps
             save_dir = os.path.join(cfgs.dump_dir, scene_list[data_idx], cfgs.camera)
@@ -109,16 +106,15 @@ def inference():
             tic = time.time()
 
 
-def evaluate(dump_dir):  # changed the graspnetAPI code, it can directly save evaluating results
+def evaluate(dump_dir):
     ge = GraspNetEval(root=cfgs.dataset_root, camera=cfgs.camera, split='test_seen')
-    # ge.eval_seen(dump_folder=dump_dir, proc=6)
-    ge.eval_scene(scene_id=100, dump_folder=dump_dir)
+    res, ap = ge.eval_seen(dump_folder=dump_dir, proc=6)
+    save_dir = os.path.join(cfgs.dump_dir, 'ap_{}.npy'.format(cfgs.camera))
+    np.save(save_dir, res)
 
 
 if __name__ == '__main__':
-    # python test.py  --infer --eval
     if cfgs.infer:
         inference()
-    # python test.py --dump_dir logs/dump_kn_decouple_quat/
     if cfgs.eval:
         evaluate(cfgs.dump_dir)
