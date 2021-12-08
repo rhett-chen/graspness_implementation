@@ -14,3 +14,4 @@
 **/*.egg-info/**
 logs
 dataset/tolerance
+**/.idea/

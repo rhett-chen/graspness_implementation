@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="SshConfigs">
-    <configs>
-      <sshConfig authType="PASSWORD" host="172.18.219.188" id="6d82b5f1-08f0-426b-ad0e-468e141995d1" port="22" nameFormat="DESCRIPTIVE" username="bot" />
-      <sshConfig authType="PASSWORD" host="192.168.1.2" id="2afeb35e-efed-4e32-bb86-1a1bc5b311bd" port="22" nameFormat="DESCRIPTIVE" username="zibo" />
-    </configs>
-  </component>
-</project>
