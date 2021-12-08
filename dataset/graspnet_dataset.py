@@ -12,8 +12,7 @@ import collections.abc as container_abcs
 from torch.utils.data import Dataset
 from tqdm import tqdm
 import MinkowskiEngine as ME
-from data_utils import CameraInfo, transform_point_cloud, create_point_cloud_from_depth_image, \
-    get_workspace_mask, remove_invisible_grasp_points
+from data_utils import CameraInfo, transform_point_cloud, create_point_cloud_from_depth_image, get_workspace_mask
 
 
 class GraspNetDataset(Dataset):
@@ -226,7 +225,6 @@ class GraspNetDataset(Dataset):
 
 def load_grasp_labels(root):
     obj_names = list(range(1, 89))
-    # obj_names = [39, 21, 6, 27, 1, 3, 67, 52, 38]  # begin from 0
     grasp_labels = {}
     for obj_name in tqdm(obj_names, desc='Loading grasping labels...'):
         label = np.load(os.path.join(root, 'grasp_label_simplified', '{}_labels.npz'.format(str(obj_name - 1).zfill(3))))
@@ -245,13 +243,12 @@ def minkowski_collate_fn(list_data):
         "coors": coordinates_batch,
         "feats": features_batch,
         "quantize2original": quantize2original
-        # "labels": labels_batch,
     }
 
     def collate_fn_(batch):
         if type(batch[0]).__module__ == 'numpy':
             return torch.stack([torch.from_numpy(b) for b in batch], 0)
-        elif isinstance(batch[0], container_abcs.Sequence):   # this is for list, return list, so train.py to device need list
+        elif isinstance(batch[0], container_abcs.Sequence):
             return [[torch.from_numpy(sample) for sample in b] for b in batch]
         elif isinstance(batch[0], container_abcs.Mapping):
             for key in batch[0]:
@@ -262,14 +259,3 @@ def minkowski_collate_fn(list_data):
     res = collate_fn_(list_data)
 
     return res
-
-
-def collate_fn(batch):
-    if type(batch[0]).__module__ == 'numpy':
-        return torch.stack([torch.from_numpy(b) for b in batch], 0)
-    elif isinstance(batch[0], container_abcs.Mapping):
-        return {key: collate_fn([d[key] for d in batch]) for key in batch[0]}
-    elif isinstance(batch[0], container_abcs.Sequence):
-        return [[torch.from_numpy(sample) for sample in b] for b in batch]
-
-    raise TypeError("batch must contain tensors, dicts or lists; found {}".format(type(batch[0])))

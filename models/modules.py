@@ -1,7 +1,3 @@
-""" Modules for GraspNet baseline model.
-    Author: chenxi-wang
-"""
-
 import os
 import sys
 import torch
@@ -57,7 +53,7 @@ class ApproachNet(nn.Module):
 
             top_view_inds = []
             for i in range(B):
-                top_view_inds_batch = torch.multinomial(view_score_[i], 1, replacement=False)  # [num_seed]
+                top_view_inds_batch = torch.multinomial(view_score_[i], 1, replacement=False)
                 top_view_inds.append(top_view_inds_batch)
             top_view_inds = torch.stack(top_view_inds, dim=0).squeeze(-1)  # B, num_seed
         else:
@@ -65,7 +61,7 @@ class ApproachNet(nn.Module):
 
             top_view_inds_ = top_view_inds.view(B, num_seed, 1, 1).expand(-1, -1, -1, 3).contiguous()
             template_views = generate_grasp_views(self.num_view).to(features.device)  # (num_view, 3)
-            template_views = template_views.view(1, 1, self.num_view, 3).expand(B, num_seed, -1, -1).contiguous()  # (B*num_seed*num_view*3)
+            template_views = template_views.view(1, 1, self.num_view, 3).expand(B, num_seed, -1, -1).contiguous()
             vp_xyz = torch.gather(template_views, 2, top_view_inds_).squeeze(2)  # (B, num_seed, 3)
             vp_xyz_ = vp_xyz.view(-1, 3)
             batch_angle = torch.zeros(vp_xyz_.size(0), dtype=vp_xyz.dtype, device=vp_xyz.device)
@@ -104,7 +100,7 @@ class SWADNet(nn.Module):
         self.num_angle = num_angle
         self.num_depth = num_depth
 
-        self.conv1 = nn.Conv1d(256, 256, 1)  # input feat dim need to be consistent with CloudCrop module, 128
+        self.conv1 = nn.Conv1d(256, 256, 1)  # input feat dim need to be consistent with CloudCrop module
         self.conv_swad = nn.Conv1d(256, 2*num_angle*num_depth, 1)
 
     def forward(self, vp_features, end_points):

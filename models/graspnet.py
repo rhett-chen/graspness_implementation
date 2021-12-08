@@ -64,7 +64,6 @@ class GraspNet(nn.Module):
             cur_feat = seed_features_flipped[i][cur_mask]  # Ns*feat_dim
             cur_seed_xyz = seed_xyz[i][cur_mask]  # Ns*3
 
-            # FPS sample M_points
             cur_seed_xyz = cur_seed_xyz.unsqueeze(0) # 1*Ns*3
             fps_idxs = furthest_point_sample(cur_seed_xyz, self.M_points)
             cur_seed_xyz_flipped = cur_seed_xyz.transpose(1, 2).contiguous()  # 1*3*Ns
@@ -80,7 +79,7 @@ class GraspNet(nn.Module):
         end_points['graspable_count_stage1'] = graspable_num_batch / B
 
         end_points, res_feat = self.rotation(seed_features_graspable, end_points)
-        seed_features_graspable = seed_features_graspable + res_feat  # residual feat from view selection
+        seed_features_graspable = seed_features_graspable + res_feat
 
         if self.is_training:
             end_points = process_grasp_labels(end_points)

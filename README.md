@@ -8,7 +8,7 @@ My implementation of paper "Graspness Discovery in Clutters for Fast and Accurat
 
 ## Requirements
 - Python 3
-- PyTorch 1.6
+- PyTorch 1.8
 - Open3d 0.8
 - TensorBoard 2.3
 - NumPy
@@ -43,7 +43,7 @@ git clone https://github.com/graspnet/graspnetAPI.git
 cd graspnetAPI
 pip install .
 ```
-
+For MinkowskiEngine, please refer https://github.com/NVIDIA/MinkowskiEngine
 ## Point level Graspness Generation
 Point level graspness label are not included in the original dataset, and need additional generation. Make sure you have downloaded the orginal dataset from [GraspNet](https://graspnet.net/). The generation code is in [dataset/generate_graspness.py](dataset/generate_graspness.py).
 ```bash
@@ -76,7 +76,7 @@ Evaluation results on Kinect camera:
 | In repo  | 61.83  | 73.28            | 54.14            | 51.13  | 62.53            | 41.57            | 19.94  | 24.90            | 11.02             |
 
 ## Troubleshooting
-If you meet the torch.floor error in MinkowskiEngine, you can simplify solve it by change the source code of MinkowskiEngine: 
+If you meet the torch.floor error in MinkowskiEngine, you can simply solve it by changing the source code of MinkowskiEngine: 
 MinkowskiEngine/utils/quantization.py 262，from discrete_coordinates =_auto_floor(coordinates) to discrete_coordinates = coordinates
 ## Acknowledgement
 My code is mainly based on Graspnet-baseline  https://github.com/graspnet/graspnet-baseline.

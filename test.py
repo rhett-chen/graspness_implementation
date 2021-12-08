@@ -63,7 +63,6 @@ def inference():
     print("-> loaded checkpoint %s (epoch: %d)" % (cfgs.checkpoint_path, start_epoch))
 
     batch_interval = 100
-    # set model to eval mode (for bn and dp)
     net.eval()
     tic = time.time()
     for batch_idx, batch_data in enumerate(test_dataloader):
