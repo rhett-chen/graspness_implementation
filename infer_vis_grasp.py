@@ -69,10 +69,10 @@ def data_process():
 
     # sample points random
     if len(cloud_masked) >= cfgs.num_point:
-        idxs = np.random.choice(len(cloud_masked), num_points, replace=False)
+        idxs = np.random.choice(len(cloud_masked), cfgs.num_point, replace=False)
     else:
         idxs1 = np.arange(len(cloud_masked))
-        idxs2 = np.random.choice(len(cloud_masked), num_points - len(cloud_masked), replace=True)
+        idxs2 = np.random.choice(len(cloud_masked), cfgs.num_point - len(cloud_masked), replace=True)
         idxs = np.concatenate([idxs1, idxs2], axis=0)
     cloud_sampled = cloud_masked[idxs]
 
