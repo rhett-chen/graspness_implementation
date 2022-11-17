@@ -25,9 +25,18 @@ if __name__ == '__main__':
     save_path_root = os.path.join(dataset_root, 'graspness')
 
     num_views, num_angles, num_depths = 300, 12, 4
-    fric_coef_thresh = 0.6
+    fric_coef_thresh = 0.8
     point_grasp_num = num_views * num_angles * num_depths
     for scene_id in range(100):
+        save_path = os.path.join(save_path_root, 'scene_' + str(scene_id).zfill(4), camera_type)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        labels = np.load(
+            os.path.join(dataset_root, 'collision_label', 'scene_' + str(scene_id).zfill(4), 'collision_labels.npz'))
+        collision_dump = []
+        for j in range(len(labels)):
+            collision_dump.append(labels['arr_{}'.format(j)])
+
         for ann_id in range(256):
             # get scene point cloud
             print('generating scene: {} ann: {}'.format(scene_id, ann_id))
@@ -61,21 +70,15 @@ if __name__ == '__main__':
                                                   camera_type, 'annotations', '%04d.xml' % ann_id))
             pose_vectors = scene_reader.getposevectorlist()
             obj_list, pose_list = get_obj_pose_list(camera_pose, pose_vectors)
-            # print(obj_list)
             grasp_labels = {}
             for i in obj_list:
                 file = np.load(os.path.join(dataset_root, 'grasp_label', '{}_labels.npz'.format(str(i).zfill(3))))
                 grasp_labels[i] = (file['points'].astype(np.float32), file['offsets'].astype(np.float32),
                                    file['scores'].astype(np.float32))
 
-            labels = np.load(
-                os.path.join(dataset_root, 'collision_label', 'scene_' + str(scene_id).zfill(4), 'collision_labels.npz'))
-            collision_dump = []
-            for j in range(len(labels)):
-                collision_dump.append(labels['arr_{}'.format(j)])
             grasp_points = []
             grasp_points_graspness = []
-            for i, (obj_idx, trans) in enumerate(zip(obj_list, pose_list)):
+            for i, (obj_idx, trans_) in enumerate(zip(obj_list, pose_list)):
                 sampled_points, offsets, fric_coefs = grasp_labels[obj_idx]
                 collision = collision_dump[i]  # Npoints * num_views * num_angles * num_depths
                 num_points = sampled_points.shape[0]
@@ -83,7 +86,8 @@ if __name__ == '__main__':
                 valid_grasp_mask = ((fric_coefs <= fric_coef_thresh) & (fric_coefs > 0) & ~collision)
                 valid_grasp_mask = valid_grasp_mask.reshape(num_points, -1)
                 graspness = np.sum(valid_grasp_mask, axis=1) / point_grasp_num
-                target_points = transform_points(sampled_points, trans)
+                target_points = transform_points(sampled_points, trans_)
+                target_points = transform_points(target_points, np.linalg.inv(camera_pose))  # fix bug
                 grasp_points.append(target_points)
                 grasp_points_graspness.append(graspness.reshape(num_points, 1))
             grasp_points = np.vstack(grasp_points)
@@ -112,7 +116,5 @@ if __name__ == '__main__':
             max_graspness = np.max(cloud_masked_graspness)
             min_graspness = np.min(cloud_masked_graspness)
             cloud_masked_graspness = (cloud_masked_graspness - min_graspness) / (max_graspness - min_graspness)
-            save_path = os.path.join(save_path_root, 'scene_' + str(scene_id).zfill(4), camera_type)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
+
             np.save(os.path.join(save_path, str(ann_id).zfill(4) + '.npy'), cloud_masked_graspness)

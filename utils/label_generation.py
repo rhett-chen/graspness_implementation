@@ -132,8 +132,11 @@ def match_grasp_view_and_label(end_points):
 
     u_max = top_view_grasp_scores.max()
     po_mask = top_view_grasp_scores > 0
-    u_min = top_view_grasp_scores[po_mask].min()
-    top_view_grasp_scores[po_mask] = torch.log(u_max / top_view_grasp_scores[po_mask]) / torch.log(u_max / u_min)
+    po_mask_num = torch.sum(po_mask)
+    if po_mask_num > 0:
+        u_min = top_view_grasp_scores[po_mask].min()
+        top_view_grasp_scores[po_mask] = torch.log(u_max / top_view_grasp_scores[po_mask]) / (torch.log(u_max / u_min) + 1e-6)
+
     end_points['batch_grasp_score'] = top_view_grasp_scores  # (B, Ns, A, D)
     end_points['batch_grasp_width'] = top_view_grasp_widths  # (B, Ns, A, D)
 
