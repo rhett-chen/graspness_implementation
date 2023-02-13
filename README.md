@@ -63,8 +63,6 @@ Training examples are shown in [command_train.sh](command_train.sh). `--dataset_
 
 Testing examples are shown in [command_test.sh](command_test.sh), which contains inference and result evaluation. `--dataset_root`, `--camera`, `--checkpoint_path` and `--dump_dir` should be specified according to your settings. Set `--collision_thresh` to -1 for fast inference.
 
-If you need the trained weights, you can contact me directly.
-
 ## Results
 Results "In repo" report the model performance of my results without collision detection.
 
