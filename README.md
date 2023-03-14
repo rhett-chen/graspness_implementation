@@ -63,8 +63,6 @@ Training examples are shown in [command_train.sh](command_train.sh). `--dataset_
 
 Testing examples are shown in [command_test.sh](command_test.sh), which contains inference and result evaluation. `--dataset_root`, `--camera`, `--checkpoint_path` and `--dump_dir` should be specified according to your settings. Set `--collision_thresh` to -1 for fast inference.
 
-If you need the trained weights, you can contact me directly.
-
 ## Results
 Results "In repo" report the model performance of my results without collision detection.
 
@@ -75,12 +73,6 @@ Evaluation results on Kinect camera:
 | In paper | 61.19  | 71.46            | 56.04            | 47.39  | 56.78            | 40.43            | 19.01  | 23.73            | 10.60             |
 | In repo  | 61.83  | 73.28            | 54.14            | 51.13  | 62.53            | 41.57            | 19.94  | 24.90            | 11.02             |
 
-Evaluation results on Realsense camera:
-|          |        | Seen             |                  |        | Similar          |                  |        | Novel            |                  | 
-|:--------:|:------:|:----------------:|:----------------:|:------:|:----------------:|:----------------:|:------:|:----------------:|:----------------:|
-|          | __AP__ | AP<sub>0.8</sub> | AP<sub>0.4</sub> | __AP__ | AP<sub>0.8</sub> | AP<sub>0.4</sub> | __AP__ | AP<sub>0.8</sub> | AP<sub>0.4</sub> |
-| In paper | 65.70  | 76.25            | 61.08            | 53.75  | 65.04            | 45.97            | 23.98  | 29.93            | 14.05             |
-| In repo  | 61.97  | 74.57            | 52.44            | 52.95  | 65.95            | 41.16            | 23.13  | 29.34            | 11.10             |
 
 ## Troubleshooting
 If you meet the torch.floor error in MinkowskiEngine, you can simply solve it by changing the source code of MinkowskiEngine: 
